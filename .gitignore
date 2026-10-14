@@ -6,3 +6,5 @@ review.xlsx
 .agents/skills/
 skills-lock.json
 .playwright-mcp/
+~$*
+run1/

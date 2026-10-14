@@ -38,7 +38,7 @@ Read [CONTEXT.md](CONTEXT.md) before every task. It holds the glossary, IRD rule
 - Live extraction scored against the answer key is a separate command, not part of `pytest`.
 
 ## Workflow
-- Tickets are local markdown files in `.scratch/`, created by /to-tickets. Work them one at a time, in numbered order.
+- Tickets are GitHub issues (see Issue tracker below). Work them one at a time, in numbered order.
 - Ask instead of guessing.
 - At the end of each ticket, stage a commit and stop. Wait for my approval before committing.
 
@@ -46,11 +46,11 @@ Read [CONTEXT.md](CONTEXT.md) before every task. It holds the glossary, IRD rule
 
 ### Issue tracker
 
-Local markdown tickets in `.scratch/<feature>/issues/NN-<slug>.md`. See `docs/agents/issue-tracker.md`.
+GitHub issues in `ashgaun/stonewood-invoice-checker`. Read a ticket with `gh issue view <n> --comments`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Default five roles, recorded as a `Status:` line in each ticket. See `docs/agents/triage-labels.md`.
+Default five roles, applied as GitHub issue labels. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
