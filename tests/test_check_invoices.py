@@ -1,3 +1,4 @@
+import os
 import runpy
 import shutil
 import sys
@@ -9,10 +10,11 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 from pypdf import PdfWriter
 
 import extractor
-from check_invoices import Extraction, parse_amount, parse_date, run
+from check_invoices import GREEN, RED, Extraction, parse_amount, parse_date, run
 from make_test_invoices import line_items
 
 ROOT = Path(__file__).parent.parent
@@ -120,8 +122,9 @@ def test_reader_error_never_shows_the_api_key(tmp_path):
     assert "[key hidden]" in row["Flags"]
 
 
-def test_command_line_on_invoice_1_with_a_fake_openai_is_looks_fine(tmp_path, monkeypatch):
-    calls = []
+def run_command_line(tmp_path, monkeypatch, *options):
+    """python check_invoices.py <folder with #1> [options], with OpenAI and Excel faked."""
+    calls, opened = [], []
 
     class FakeOpenAI:
         def __init__(self):
@@ -139,9 +142,14 @@ def test_command_line_on_invoice_1_with_a_fake_openai_is_looks_fine(tmp_path, mo
     folder.mkdir()
     shutil.copy(ROOT / "invoices" / "01-clean.pdf", folder)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["check_invoices.py", str(folder)])
-
+    monkeypatch.setattr(os, "startfile", opened.append, raising=False)
+    monkeypatch.setattr(sys, "argv", ["check_invoices.py", str(folder), *options])
     runpy.run_path(str(ROOT / "check_invoices.py"), run_name="__main__")
+    return calls, opened
+
+
+def test_command_line_on_invoice_1_with_a_fake_openai_is_looks_fine(tmp_path, monkeypatch):
+    calls, opened = run_command_line(tmp_path, monkeypatch)
 
     [row] = read_review(tmp_path / "review.xlsx")
     assert row["Status"] == "Looks fine", row["Flags"]
@@ -149,6 +157,38 @@ def test_command_line_on_invoice_1_with_a_fake_openai_is_looks_fine(tmp_path, mo
     assert request["model"] == "model-from-setting"
     assert request["text_format"] is Extraction
     assert "INV-2147" in request["input"]
+    assert opened == []
+
+
+def test_open_option_opens_review_xlsx_when_the_run_finishes(tmp_path, monkeypatch):
+    _, opened = run_command_line(tmp_path, monkeypatch, "--open")
+    assert [Path(p) for p in opened] == [tmp_path / "review.xlsx"]
+
+
+def test_review_is_easy_to_read_when_it_opens(tmp_path):
+    def extract(pdf):
+        out = fake_extract(pdf)
+        if pdf.name == "02-wrong-gst.pdf":
+            out["invoice_number"]["source_text"] = "INV-9999"  # gives a Flag
+        return out
+
+    check(tmp_path, ["01-clean.pdf", "02-wrong-gst.pdf"], extract)
+    ws = load_workbook(tmp_path / "review.xlsx").active
+    headers = [c.value for c in ws[1]]
+    cells = {h: [row[i] for row in ws.iter_rows(min_row=2)] for i, h in enumerate(headers)}
+
+    assert ws.freeze_panes == "A2"
+    assert ws.auto_filter.ref == "A1:O3"
+    for i, header in enumerate(headers, start=1):
+        width = ws.column_dimensions[get_column_letter(i)].width
+        assert width >= len(header), header
+    for header in ("Flags", "Notes", "Line items"):
+        assert ws.column_dimensions[get_column_letter(headers.index(header) + 1)].width >= 40
+        assert all(c.alignment.wrap_text for c in cells[header]), header
+    looks_fine, needs_you = cells["Status"]
+    assert (looks_fine.value, needs_you.value) == ("Looks fine", "Needs you")
+    assert looks_fine.fill.fgColor.rgb.endswith(GREEN)
+    assert needs_you.fill.fgColor.rgb.endswith(RED)
 
 
 def test_extract_returning_wrong_structure_gives_one_could_not_read_flag(tmp_path):

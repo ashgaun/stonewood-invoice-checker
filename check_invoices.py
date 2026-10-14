@@ -1,15 +1,17 @@
 """Check contractor invoice PDFs and write review.xlsx, one row per invoice.
 
-Usage: python check_invoices.py invoices/
+Usage: python check_invoices.py invoices/ [--open]
 """
+import argparse
+import os
 import re
-import sys
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
 from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 from pydantic import BaseModel, ConfigDict, ValidationError
 from pypdf import PdfReader
 
@@ -144,6 +146,19 @@ def check_invoice(pdf, extract):
     return row
 
 
+WIDTHS = {
+    "File": 26, "Status": 12, "Flags": 60, "Notes": 45, "Suggested property": 20, "Property reason": 30,
+    "Supplier": 32, "Date": 12, "Due date": 12, "Bill reference": 15, "Line items": 60, "Site": 20,
+    "Subtotal": 12, "GST": 12, "Total": 12,
+}
+WRAPPED = {"Flags", "Notes", "Line items"}
+RED, GREEN = "FFC7CE", "C6EFCE"  # Excel's own Bad and Good fills
+STATUS_STYLE = {
+    "Needs you": (PatternFill("solid", fgColor=RED), Font(color="9C0006", bold=True)),
+    "Looks fine": (PatternFill("solid", fgColor=GREEN), Font(color="006100", bold=True)),
+}
+
+
 def write_review(rows, output_path):
     wb = Workbook()
     ws = wb.active
@@ -151,12 +166,17 @@ def write_review(rows, output_path):
     ws.append(COLUMNS)
     for row in rows:
         ws.append([row.get(c) for c in COLUMNS])
-    for column in ws.iter_cols(min_row=2):
-        for cell in column:
+    for header, column in zip(COLUMNS, ws.iter_cols()):
+        ws.column_dimensions[column[0].column_letter].width = WIDTHS[header]
+        column[0].font = Font(bold=True)
+        for cell in column[1:]:
+            cell.alignment = Alignment(vertical="top", wrap_text=header in WRAPPED)
             if isinstance(cell.value, Decimal):
                 cell.number_format = "#,##0.00"
             elif isinstance(cell.value, date):
                 cell.number_format = "DD/MM/YYYY"
+            if header == "Status":
+                cell.fill, cell.font = STATUS_STYLE[cell.value]
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
     wb.save(output_path)
@@ -176,9 +196,14 @@ def run(folder, output_path, extract, run_date):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("Usage: python check_invoices.py invoices/")
+    parser = argparse.ArgumentParser(description="Check invoice PDFs and write review.xlsx.")
+    parser.add_argument("folder", help="folder of invoice PDFs, e.g. invoices/")
+    parser.add_argument("--open", action="store_true", help="open review.xlsx in Excel when the run finishes")
+    args = parser.parse_args()
     from extractor import extract
-    rows = run(sys.argv[1], "review.xlsx", extract, date.today())
+    output = Path("review.xlsx").resolve()
+    rows = run(args.folder, output, extract, date.today())
     needs_you = sum(r["Status"] == "Needs you" for r in rows)
     print(f"Wrote review.xlsx: {len(rows)} invoices, {needs_you} Needs you, {len(rows) - needs_you} Looks fine.")
+    if args.open:
+        os.startfile(output)  # Windows only: opens in the default app for .xlsx
