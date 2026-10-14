@@ -66,21 +66,23 @@ document type, supplier name, GST number, invoice number, invoice date, due date
 - `answer_key.csv`: the correct values and expected flags for every test invoice. Written before any run.
 
 ## Checks (run in plain code, not by the model)
-1. Document type is an invoice. Quotes, estimates, pro formas and statements are flagged, not processed. A credit note is always a Flag pointing to the bill it reduces in `past_invoices.csv`, or saying that bill was not found. Maths checks still run on its amounts, ignoring the minus sign. The duplicate check is skipped.
+1. Document type is an invoice. Quotes, estimates, pro formas, drafts and statements are flagged, not processed. A credit note is always a Flag pointing to the bill it reduces in `past_invoices.csv`, or saying that bill was not found. Maths checks still run on its amounts, ignoring the minus sign. The duplicate check is skipped.
 2. Required fields present for the invoice's value band (IRD rules above).
 3. Maths: line items add up to the subtotal and subtotal + GST = total, both exact to the cent. GST = 15% of subtotal within $0.01 per line item, because Xero rounds GST per line. Tolerance is configurable. An invoice of $200 or less that shows only a GST-inclusive total (no subtotal or GST) passes: line items add up to the total, and there is no GST to check (#11).
-4. Duplicates: same supplier + invoice number, or same supplier + date + amount. Checked against `past_invoices.csv` and within the run. Within a run, both copies are flagged, each pointing to the other. A resend of a past invoice flags only the new one.
+4. Duplicates: same supplier + invoice number (ignoring spaces and hyphens, so "INV 3288" is "INV-3288"), or same supplier + date + amount. Checked against `past_invoices.csv` and within the run. Within a run, both copies are flagged, each pointing to the other. A resend of a past invoice flags only the new one.
 5. GST number present when required, and passes the IRD check digit. A missing required GST number is `Missing for IRD:` (#20). A GST number that fails the check digit is `GST number invalid:`.
 6. Supplier is on `suppliers.csv`. Match on GST number first, then on the name ignoring case, punctuation and "Ltd"/"Limited". No fuzzy matching. Unknown suppliers are flagged. A GST number matching one supplier and a name matching another is flagged.
 7. Bank account matches the one on `suppliers.csv`, comparing digits only with the suffix padded to 3 digits. A change is flagged as a possible fraud sign, showing both numbers.
 8. Date sanity: not after the run date, not more than 90 days before it (configurable). Tests use a fixed run date.
-9. Buyer details present over $1,000. Flag a bill whose buyer name does not match the entity of the matched property in `properties.csv`. Skipped when no property matched or there is no buyer name (#7, #18).
-10. Property match against `properties.csv` including other names. Search only the site text, never the buyer or supplier address. Match whole words, ignoring case, macrons, punctuation and extra spaces. No fuzzy matching. One match = suggest it with the reason. Several matches, places that disagree, or none = flag. Never guess. Site text that names only part of a property name, such as "Kowhai" alone, matches every property whose name contains it as whole words, so it is `Property unclear:`, not `No property:` (#17).
+9. Buyer details present over $1,000. Flag a bill whose buyer name does not match the entity of the matched property in `properties.csv`, ignoring case, punctuation and "Ltd"/"Limited" as in check 6. Skipped when no property matched or there is no buyer name (#7, #18).
+10. Property match against `properties.csv` including other names. Search only the site text, never the buyer or supplier address. Match whole words, ignoring case, macrons, punctuation and extra spaces. No fuzzy matching. One match = suggest it with the reason. Several matches, places that disagree, or none = flag. Never guess. Site text that names only part of a property name, such as "Kowhai" alone, matches every property whose name contains it as whole words, so it is `Property unclear:`, not `No property:` (#17). Part of a name counts only in the Reference and site block, not in the line item description, where everyday words ("food court", "rimu floorboards") would make clear bills unclear. A site text place that contains the whole buyer address is not matched from: it is `Property unclear:`, because the reader may have taken the buyer's address for the site.
 11. Extraction: source text not found in the PDF = Flag. A blank field is a Flag only if IRD requires it for the invoice's value band, or she needs it to enter the bill (supplier, date, total, site text). Any other blank field is a Note. Low self-reported confidence = Note.
 
-Every PDF in the folder gets a row, no matter what. No readable text (for example a scan), a failed OpenAI call, or model output in the wrong structure each give one clear Flag, and the other checks are skipped for that invoice. The no-text case is covered by a pytest test, not a test invoice.
+Every PDF in the folder gets a row, no matter what. No readable text (for example a scan), a failed OpenAI call, or model output in the wrong structure each give one clear Flag, and the other checks are skipped for that invoice. A crash inside the checks or property matching gives that invoice one `Could not read:` Flag, and the other invoices still get their rows. The no-text case is covered by a pytest test, not a test invoice.
 
 Unusual amounts are not checked, because there is no invoice history to compare against.
+
+Known false Flag: an invoice over $200 that shows only a GST-inclusive total with a "GST included" statement is lawful, but gets `Missing for IRD:`, because that statement is not extracted. Accepted, because erring towards Needs you is right for her.
 
 Output status per invoice is **Needs you** (any Flag) or **Looks fine** (no Flags), with a plain-English reason and the numbers for every Flag and Note.
 
@@ -137,3 +139,4 @@ Scanned PDFs are left out for now and noted for later.
 10. Are all contractors GST-registered, or do some unregistered sole traders invoice them?
 11. Where does she record the work order in ApprovalMax, if anywhere?
 12. In what order do the bill fields appear in her ApprovalMax?
+13. How do contractors write a property's street address? A street-address other name matches inside a longer address ("3-5 Nikau St", "12 Totara Street, Christchurch"). Should `properties.csv` carry the city, and how are address ranges written?

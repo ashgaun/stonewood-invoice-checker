@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from pypdf import PdfWriter
 
+import check_invoices
 import extractor
 from check_invoices import GREEN, RED, Extraction, parse_amount, parse_date, run
 from make_test_invoices import line_items
@@ -203,6 +204,23 @@ def test_extract_returning_wrong_structure_gives_one_could_not_read_flag(tmp_pat
     assert row["Flags"].startswith("Could not read:")
     assert "\n" not in row["Flags"]
     assert row["Supplier"] is None
+
+
+@pytest.mark.parametrize("module, name", [(check_invoices.checks, "check"), (check_invoices.property_match, "suggest")])
+def test_a_crash_in_the_checks_gives_that_invoice_one_could_not_read_flag(tmp_path, monkeypatch, module, name):
+    real = getattr(module, name)
+
+    def crash_on_invoice_2(values, *rest):
+        if values["invoice_number"] == "INV-0582":
+            raise KeyError("boom")
+        return real(values, *rest)
+
+    monkeypatch.setattr(module, name, crash_on_invoice_2)
+    clean, crashed = check(tmp_path, ["01-clean.pdf", "02-wrong-gst.pdf"])
+    assert clean["Status"] == "Looks fine"
+    assert crashed["Status"] == "Needs you"
+    assert crashed["Flags"] == "Could not read: the checks failed on this invoice (KeyError: 'boom')."
+    assert crashed["Suggested property"] is None
 
 
 def test_low_confidence_is_a_note_and_status_stays_looks_fine(tmp_path):
