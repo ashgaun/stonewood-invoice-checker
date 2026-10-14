@@ -15,6 +15,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from pydantic import BaseModel, ConfigDict, ValidationError
 from pypdf import PdfReader
 
+import checks
+import property_match
+
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -143,6 +146,7 @@ def check_invoice(pdf, extract):
              for i in extraction.line_items]
     row.update({column: values[name] for column, name in VALUE_COLUMNS.items()})
     row["Line items"] = " | ".join(f"{d or ''} = {'' if a is None else f'${a:,.2f}'}" for d, a in items)
+    row["values"], row["items"] = values, items  # for the checks, which also look across the run
     return row
 
 
@@ -184,13 +188,25 @@ def write_review(rows, output_path):
 
 def run(folder, output_path, extract, run_date):
     """Check every PDF in folder and write one row per invoice to output_path."""
-    rows = []
-    for pdf in sorted(Path(folder).glob("*.pdf")):
-        row = check_invoice(pdf, extract)
+    rows = [check_invoice(pdf, extract) for pdf in sorted(Path(folder).glob("*.pdf"))]
+    read = [r for r in rows if "values" in r]  # the rest already have their one Flag
+    for row in read:
+        others = [(r["File"], r["values"]) for r in read if r is not row]
+        try:
+            flags, notes = checks.check(row["values"], row["items"], run_date, others)
+            found = (None, None, [])
+            if not any(f.startswith("Not a bill:") for f in flags):  # not processed further
+                found = property_match.suggest(row["values"], row["items"])
+        except Exception as e:  # one bad invoice must not cost the others their rows
+            row["Flags"].append(f"Could not read: the checks failed on this invoice ({type(e).__name__}: {e}).")
+            continue
+        row["Suggested property"], row["Property reason"], property_flags = found
+        row["Flags"] += flags + property_flags
+        row["Notes"] += notes
+    for row in rows:
         row["Status"] = "Needs you" if row["Flags"] else "Looks fine"
         row["Flags"] = "\n".join(row["Flags"]) or None
         row["Notes"] = "\n".join(row["Notes"]) or None
-        rows.append(row)
     write_review(rows, output_path)
     return rows
 
