@@ -186,8 +186,8 @@ def test_review_is_easy_to_read_when_it_opens(tmp_path):
     for header in ("Flags", "Notes", "Line items"):
         assert ws.column_dimensions[get_column_letter(headers.index(header) + 1)].width >= 40
         assert all(c.alignment.wrap_text for c in cells[header]), header
-    looks_fine, needs_you = cells["Status"]
-    assert (looks_fine.value, needs_you.value) == ("Looks fine", "Needs you")
+    needs_you, looks_fine = cells["Status"]  # Needs you rows first
+    assert (needs_you.value, looks_fine.value) == ("Needs you", "Looks fine")
     assert looks_fine.fill.fgColor.rgb.endswith(GREEN)
     assert needs_you.fill.fgColor.rgb.endswith(RED)
 
@@ -216,7 +216,7 @@ def test_a_crash_in_the_checks_gives_that_invoice_one_could_not_read_flag(tmp_pa
         return real(values, *rest)
 
     monkeypatch.setattr(module, name, crash_on_invoice_2)
-    clean, crashed = check(tmp_path, ["01-clean.pdf", "02-wrong-gst.pdf"])
+    crashed, clean = check(tmp_path, ["01-clean.pdf", "02-wrong-gst.pdf"])  # Needs you rows first
     assert clean["Status"] == "Looks fine"
     assert crashed["Status"] == "Needs you"
     assert crashed["Flags"] == "Could not read: the checks failed on this invoice (KeyError: 'boom')."

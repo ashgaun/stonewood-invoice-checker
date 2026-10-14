@@ -25,11 +25,15 @@ Fields:
 - buyer_name: who the document is addressed to.
 - buyer_identifier: the buyer's address, phone, email, NZBN or website, as printed.
 - reference: the value of the field labelled Reference, if there is one.
-- work_order: the work order or job number, if there is one.
+- work_order: the work order or job number, if there is one. It is often inside the Reference: for
+  "WO-30418 Kowhai House" copy "WO-30418".
 - site: the building or site where the work was done, as printed. Look in the Reference, a site or job block, or
   the first line item description. Never the buyer's or supplier's address.
-- line_items: one entry per charged line, with its description and amount.
-- subtotal: the amount before GST. gst: the GST amount. total: the amount including GST.
+- line_items: one entry per charged line, with its whole description as printed (including any site name in front
+  of it) and its amount.
+- subtotal: the amount labelled as the subtotal or the amount before GST. gst: the amount labelled as GST.
+  total: the amount including GST. If the document shows no subtotal or no GST amount, return null for it: never
+  copy a line item amount or the total into subtotal or gst.
 - bank_account: the bank account to pay into.
 """
 
