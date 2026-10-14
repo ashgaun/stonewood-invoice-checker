@@ -41,3 +41,17 @@ Read [CONTEXT.md](CONTEXT.md) before every task. It holds the glossary, IRD rule
 - Tickets are local markdown files in `.scratch/`, created by /to-tickets. Work them one at a time, in numbered order.
 - Ask instead of guessing.
 - At the end of each ticket, stage a commit and stop. Wait for my approval before committing.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown tickets in `.scratch/<feature>/issues/NN-<slug>.md`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five roles, recorded as a `Status:` line in each ticket. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
