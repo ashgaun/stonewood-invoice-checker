@@ -27,7 +27,20 @@ Installs `pypdf` (first ticket that reads PDFs).
 - #1's GST number is 112-345-671 or another number that passes the check digit.
 
 ## Acceptance criteria
-- [ ] 21 PDFs regenerate from the script, all invented data, no real names, branding or bank numbers.
-- [ ] Reference files exist with the columns above, including entity on properties [assumed].
-- [ ] All the tests above pass.
-- [ ] `pypdf` is installed and added to requirements.
+- [x] 21 PDFs regenerate from the script, all invented data, no real names, branding or bank numbers.
+- [x] Reference files exist with the columns above, including entity on properties [assumed].
+- [x] All the tests above pass.
+- [x] `pypdf` is installed and added to requirements.
+
+## Comments
+
+- #5 (alias) has no planted problem, so the answer key gives it no Flags and **Looks fine**, with property Kowhai House. The "at least one Flag" test exempts #5 along with #12 and #13 (agreed with the user).
+- `answer_key.csv` `line_items` format: `description = amount | description = amount`, as printed. `expected_flags` is labels separated by `; `.
+- Quote (#9) and statement (#10) have no expected property, because they are not processed.
+- `make_test_invoices.py` draws each PDF from its answer-key row, so printed values cannot drift from the key. It uses Arial from `C:/Windows/Fonts` for the macron in #12.
+- Bellbird is printed "Bellbird Cleaning Limited" on invoices but listed as "Bellbird Cleaning Ltd" in `suppliers.csv`, which plants the Ltd/Limited name match for check 6.
+- Decisions the data assumes, agreed with the user and recorded in `CONTEXT.md` checks 3, 5, 9 and 10:
+  1. Skip the entity check when the buyer name is blank (#7, #18). Otherwise #18 gets `Wrong entity:`.
+  2. A GST-inclusive total with no subtotal or GST at $200 or less is not a `Maths:` or `Missing for IRD:` Flag (#11).
+  3. A missing GST number when required is labelled `Missing for IRD:`, not `GST number invalid:` (#20).
+  4. Site text "Kowhai" alone has to match every property whose name contains the whole word Kowhai (#17 expects `Property unclear:`, not `No property:`).
