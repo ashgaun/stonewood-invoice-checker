@@ -119,8 +119,11 @@ def required_fields(values):
 def ird_fields(values, items):
     """Check 2: what IRD requires for the invoice's value band (GST-inclusive total)."""
     total = None if values["total"] is None else abs(values["total"])
+    # Every line item needs one. Amounts shown without sign, like the total, so a credit note's Flag agrees with itself.
+    descriptions = {f"description of line item {n} for {'a blank amount' if a is None else money(abs(a))}": d
+                    for n, (d, a) in enumerate(items, 1)}
     required = {"supplier name": values["supplier_name"], "invoice date": values["invoice_date"],
-                "line item description": next((d for d, _ in items if d), None), "total": total}
+                **(descriptions or {"line item description": None}), "total": total}
     missing = [f"{field} (required on every tax invoice)" for field, value in required.items() if value is None]
     if total is not None and total > 200:
         if not values["gst_number"]:

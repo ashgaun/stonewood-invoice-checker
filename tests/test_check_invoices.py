@@ -85,6 +85,30 @@ def test_source_text_not_in_pdf_leaves_field_blank_and_flags_it(tmp_path):
     assert row["Flags"] == "Source text not found: invoice number 'INV-9999' is not in the PDF text."
 
 
+def blank_first_description(text):
+    def extract(pdf):
+        out = fake_extract(pdf)
+        out["line_items"][0]["description"]["source_text"] = text
+        return out
+    return extract
+
+
+@pytest.mark.parametrize("text", [None, " ", "\n"])
+def test_blank_line_item_description_is_missing_for_ird_naming_item_and_amount(tmp_path, text):
+    [row] = check(tmp_path, ["01-clean.pdf"], blank_first_description(text))
+    assert row["Status"] == "Needs you"
+    assert row["Flags"] == ("Missing for IRD: description of line item 1 for $570.00 (required on every tax invoice). "
+                            "Total is $1,179.90.")
+
+
+def test_credit_note_with_blank_description_gets_missing_for_ird_and_credit_note(tmp_path):
+    [row] = check(tmp_path, ["08-credit-note.pdf"], blank_first_description(None))
+    credit, missing = sorted(row["Flags"].splitlines())
+    assert credit.startswith("Credit note:")
+    assert missing == ("Missing for IRD: description of line item 1 for $150.00 (required on every tax invoice). "
+                       "Total is $172.50.")
+
+
 def test_pdf_with_no_text_gives_one_unreadable_flag_without_calling_extract(tmp_path):
     folder = tmp_path / "invoices"
     folder.mkdir()
