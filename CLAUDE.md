@@ -15,6 +15,7 @@ Read [CONTEXT.md](CONTEXT.md) before every task. It holds the glossary, IRD rule
 - Activate the venv: `.venv\Scripts\activate`
 - Run tests: `pytest`
 - Run the checker: `python check_invoices.py invoices/` (writes `review.xlsx`)
+- Live scoring (calls OpenAI twice per invoice, not part of `pytest`): `python score.py invoices/`
 
 ## Rules
 - AI only reads the invoice and returns fields with their source text. Code does all the maths and every check.

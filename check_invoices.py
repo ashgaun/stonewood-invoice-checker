@@ -129,7 +129,7 @@ def check_invoice(pdf, extract):
         if found.confidence == "low":
             shown = f"'{found.source_text}'" if found.source_text else "(nothing found)"
             notes.append(f"Low confidence: the reader was unsure about {label} {shown}.")
-        if not found.source_text:
+        if not squash(found.source_text or ""):  # only spaces or line breaks is the same as not there
             return None
         if squash(found.source_text) not in text:
             flags.append(f"Source text not found: {label} '{found.source_text}' is not in the PDF text.")
@@ -205,8 +205,10 @@ def run(folder, output_path, extract, run_date):
         row["Notes"] += notes
     for row in rows:
         row["Status"] = "Needs you" if row["Flags"] else "Looks fine"
-        row["Flags"] = "\n".join(row["Flags"]) or None
-        row["Notes"] = "\n".join(row["Notes"]) or None
+        # One line each: a line break inside an error message must not look like a second Flag.
+        row["Flags"] = "\n".join(squash(f) for f in row["Flags"]) or None
+        row["Notes"] = "\n".join(squash(n) for n in row["Notes"]) or None
+    rows.sort(key=lambda r: r["Status"] == "Looks fine")  # Needs you first; stable, so file order within each
     write_review(rows, output_path)
     return rows
 
