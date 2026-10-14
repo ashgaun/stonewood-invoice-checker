@@ -1,0 +1,6 @@
+openai==3.31.0
+python-dotenv==1.2.4
+pandas==3.0.6
+openpyxl==3.1.5
+pytest==9.1.1
+reportlab==5.0.1
