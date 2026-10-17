@@ -15,8 +15,8 @@ All invoices, suppliers and properties in this repo are made up.
 - **Every Flag shows its working.** Each one says what is wrong and gives the numbers, for example "GST is $80.00 but 15% of the subtotal $600.00 is $90.00".
 - **Money is exact to the cent.** Amounts are worked out as exact decimals, never rounded floating-point numbers.
 - **It never acts on its own.** It only writes a spreadsheet. It never pays, approves or sends anything, and it is not connected to Xero or ApprovalMax.
-- **Invoices can't give it orders.** Text inside an invoice is treated as data, never as instructions, and the AI's answer must match a fixed structure before it is used.
-- **Same answer every time.** Live scoring runs every sample twice and requires both runs to give the same status.
+- **Invoices are data, not orders.** The AI is told to ignore any instructions written inside an invoice, its answer must match a fixed structure, and code checks everything it returns.
+- **Checked for consistency.** Live scoring runs every sample twice and requires both runs to give the same status.
 
 ## How it works
 
@@ -70,7 +70,7 @@ That is the right result for the 21 sample invoices. To check other made-up invo
 
 ## Output
 
-| File | Status | Flags | Property |
+| File | Status | Flags | Suggested property |
 | --- | --- | --- | --- |
 | 19-two-problems.pdf | Needs you | Wrong GST: GST is $80.00 but 15% of the subtotal $600.00 is $90.00 (allowed difference $0.01).<br>Bank account changed: invoice says 99-0177-0987654-000 but suppliers.csv has 99-0103-0345678-002 for Copperleaf Painting Limited. Possible fraud, check with the supplier. | Rimu Plaza |
 | 09-quote.pdf | Needs you | Not a bill: document is labelled QUOTE. Not processed. | |
@@ -83,7 +83,7 @@ The real sheet also has Notes, the reason for the suggested property, and the su
 | Command | What it does | Time |
 | --- | --- | --- |
 | `pytest` | 232 offline tests. Free, no key needed | 15 to 25 seconds |
-| `python check_invoices.py invoices/` | Checks the 21 sample invoices | 82 seconds to 2 minutes |
+| `python check_invoices.py invoices/` | Checks the 21 sample invoices | about 80 seconds to 2 minutes |
 | `python score.py invoices/` | Checks the 21 samples twice and scores them against [answer_key.csv](answer_key.csv) | about 3 minutes |
 
 Measured on `gpt-4o-mini`, about 4 to 6 seconds an invoice. The checker's own work takes under a second for all 21. The rest is waiting for OpenAI, one invoice at a time, so runs are slower when OpenAI is busy. The larger `gpt-4o` model also passed every check and took about 62 seconds a run, but costs more per invoice. To use it, set `OPENAI_MODEL=gpt-4o` in `.env`.
@@ -98,6 +98,7 @@ Measured on `gpt-4o-mini`, about 4 to 6 seconds an invoice. The checker's own wo
 
 | Problem | Fix |
 | --- | --- |
+| `python` or `git` is not recognized | Install Python 3.12 from python.org (tick "Add python.exe to PATH") or Git from git-scm.com, then open a new PowerShell window |
 | PowerShell says running scripts is disabled | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again |
 | `pip install` fails with "No such file or directory" and a hint about long paths | Clone into a shorter folder, delete `.venv`, and install again |
 | `No module named ...` | The virtual environment is off. Run `.venv\Scripts\activate` |
@@ -147,6 +148,7 @@ Rules:
 - Explain any error in plain English and give me the exact command to fix it.
 
 Known problems and fixes:
+- 'python' or 'git' is not recognized: install Python 3.12 from python.org (tick "Add python.exe to PATH") or Git from git-scm.com, then open a new PowerShell window.
 - PowerShell says running scripts is disabled: run Set-ExecutionPolicy -Scope CurrentUser RemoteSigned, then activate again.
 - pip install fails with "No such file or directory" and a hint about long paths: clone into a shorter folder, delete .venv, repeat step 2.
 - "No module named ..." errors: the virtual environment is off. Run .venv\Scripts\activate.
