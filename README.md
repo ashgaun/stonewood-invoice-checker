@@ -2,7 +2,21 @@
 
 Reads contractor invoice PDFs, checks each one against IRD rules and Stonewood's records, and writes `review.xlsx` with one row per invoice marked **Needs you** or **Looks fine**. It never pays, approves or sends anything.
 
+> **AI only reads. Code does every check.**
+> OpenAI's only job is to copy text off the invoice. Plain Python code checks that the text is really in the PDF, does all the maths and makes every decision. The AI never decides whether an invoice is fine.
+
 All invoices, suppliers and properties in this repo are made up.
+
+## Why you can trust it
+
+- **AI only reads. Code does every check.** The AI copies text; Python does the maths and makes every decision.
+- **Nothing is taken on the AI's word.** Every field it copies is checked against the PDF. If the text is not there, the field is left blank and flagged.
+- **It never guesses.** It never fills in a missing value. A blank field that is required gets a Flag.
+- **Every Flag shows its working.** Each one says what is wrong and gives the numbers, for example "GST is $80.00 but 15% of the subtotal $600.00 is $90.00".
+- **Money is exact to the cent.** Amounts are worked out as exact decimals, never rounded floating-point numbers.
+- **It never acts on its own.** It only writes a spreadsheet. It never pays, approves or sends anything, and it is not connected to Xero or ApprovalMax.
+- **Invoices can't give it orders.** Text inside an invoice is treated as data, never as instructions, and the AI's answer must match a fixed structure before it is used.
+- **Same answer every time.** Live scoring runs every sample twice and requires both runs to give the same status.
 
 ## How it works
 
